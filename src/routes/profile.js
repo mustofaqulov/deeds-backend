@@ -41,6 +41,29 @@ router.put('/', requireAuth, async (req, res) => {
   res.json(data);
 });
 
+// POST /api/profile/reset — hamma progressni 0 qilish
+router.post('/reset', requireAuth, async (req, res) => {
+  const userId = req.user.id;
+
+  // Barcha bog'liq ma'lumotlarni o'chirish + profilni reset qilish
+  await Promise.all([
+    supabaseAdmin.from('active_challenges').delete().eq('user_id', userId),
+    supabaseAdmin.from('completed_days').delete().eq('user_id', userId),
+    supabaseAdmin.from('achievements').delete().eq('user_id', userId),
+    supabaseAdmin.from('prayer_log').delete().eq('user_id', userId),
+  ]);
+
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .update({ xp: 0, streak: 0, tasbeh: 0, last_task_at: null })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: "Reset qilishda xato" });
+  res.json({ message: "Progress 0 qilindi", profile: data });
+});
+
 // GET /api/profile/stats — XP, streak, tasbeh, achievements
 router.get('/stats', requireAuth, async (req, res) => {
   const userId = req.user.id;
