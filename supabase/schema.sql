@@ -11,9 +11,14 @@ create table if not exists profiles (
   city        text not null default 'Toshkent',
   xp          integer not null default 50,
   streak      integer not null default 0,
+  tasbeh      integer not null default 0,
   last_task_at timestamptz,
   created_at  timestamptz not null default now()
 );
+
+-- Backward-compatible migration for existing projects
+alter table if exists profiles
+  add column if not exists tasbeh integer not null default 0;
 
 -- 2. Active challenges (user's personal challenge list)
 create table if not exists active_challenges (
@@ -72,22 +77,27 @@ alter table achievements      enable row level security;
 alter table prayer_log        enable row level security;
 
 -- profiles: users can read/update their own row
+drop policy if exists "profiles: own row" on profiles;
 create policy "profiles: own row" on profiles
   for all using (auth.uid() = id);
 
 -- active_challenges: own rows only
+drop policy if exists "challenges: own rows" on active_challenges;
 create policy "challenges: own rows" on active_challenges
   for all using (auth.uid() = user_id);
 
 -- completed_days: own rows only
+drop policy if exists "completed_days: own rows" on completed_days;
 create policy "completed_days: own rows" on completed_days
   for all using (auth.uid() = user_id);
 
 -- achievements: own rows only
+drop policy if exists "achievements: own rows" on achievements;
 create policy "achievements: own rows" on achievements
   for all using (auth.uid() = user_id);
 
 -- prayer_log: own rows only
+drop policy if exists "prayer_log: own rows" on prayer_log;
 create policy "prayer_log: own rows" on prayer_log
   for all using (auth.uid() = user_id);
 

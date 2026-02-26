@@ -34,6 +34,7 @@ router.post('/register', async (req, res) => {
     email,
     city,
     xp: 50, // Onboarding gift
+    tasbeh: 0,
   });
 
   if (profileError) {

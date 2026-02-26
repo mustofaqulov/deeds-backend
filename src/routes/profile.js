@@ -18,12 +18,13 @@ router.get('/', requireAuth, async (req, res) => {
 
 // PUT /api/profile
 router.put('/', requireAuth, async (req, res) => {
-  const { name, city, xp, streak } = req.body;
+  const { name, city, xp, streak, tasbeh } = req.body;
   const updates = {};
   if (name) updates.name = name;
   if (city) updates.city = city;
   if (typeof xp === 'number' && xp >= 0) updates.xp = xp;
   if (typeof streak === 'number' && streak >= 0) updates.streak = streak;
+  if (typeof tasbeh === 'number' && tasbeh >= 0) updates.tasbeh = tasbeh;
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "O'zgartiriladigan maydon yo'q" });
@@ -40,12 +41,12 @@ router.put('/', requireAuth, async (req, res) => {
   res.json(data);
 });
 
-// GET /api/profile/stats — XP, achievements, streak
+// GET /api/profile/stats — XP, streak, tasbeh, achievements
 router.get('/stats', requireAuth, async (req, res) => {
   const userId = req.user.id;
 
   const [profileRes, achRes, daysRes] = await Promise.all([
-    supabaseAdmin.from('profiles').select('xp, streak, last_task_at').eq('id', userId).single(),
+    supabaseAdmin.from('profiles').select('xp, streak, tasbeh, last_task_at').eq('id', userId).single(),
     supabaseAdmin.from('achievements').select('achievement_id, xp_reward, unlocked_at').eq('user_id', userId),
     supabaseAdmin.from('completed_days').select('date, total_xp').eq('user_id', userId).order('date', { ascending: false }).limit(30),
   ]);
@@ -53,6 +54,7 @@ router.get('/stats', requireAuth, async (req, res) => {
   res.json({
     xp: profileRes.data?.xp ?? 0,
     streak: profileRes.data?.streak ?? 0,
+    tasbeh: profileRes.data?.tasbeh ?? 0,
     last_task_at: profileRes.data?.last_task_at ?? null,
     achievements: achRes.data ?? [],
     recent_days: daysRes.data ?? [],
