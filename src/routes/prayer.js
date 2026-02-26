@@ -26,7 +26,34 @@ router.get('/:date', requireAuth, async (req, res) => {
   res.json(data);
 });
 
-// PUT /api/prayer/:date/:prayer — update a single prayer status
+// PUT /api/prayer/:date — butun kunni upsert qilish (bulk sync)
+router.put('/:date', requireAuth, async (req, res) => {
+  const { date } = req.params;
+  const { fajr, dhuhr, asr, maghrib, isha } = req.body;
+
+  const toStatus = (v) => (VALID_STATUSES.includes(v) ? v : 'pending');
+
+  const record = {
+    user_id: req.user.id,
+    date,
+    fajr:    toStatus(fajr),
+    dhuhr:   toStatus(dhuhr),
+    asr:     toStatus(asr),
+    maghrib: toStatus(maghrib),
+    isha:    toStatus(isha),
+  };
+
+  const { data, error } = await supabaseAdmin
+    .from('prayer_log')
+    .upsert(record, { onConflict: 'user_id,date' })
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: "Namozni saqlashda xato" });
+  res.json(data);
+});
+
+// PUT /api/prayer/:date/:prayer — bitta namozni yangilash
 router.put('/:date/:prayer', requireAuth, async (req, res) => {
   const { date, prayer } = req.params;
   const { status } = req.body;

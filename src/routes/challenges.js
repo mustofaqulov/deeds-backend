@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 
 const router = Router();
 
-// GET /api/challenges — list user's active challenges
+// GET /api/challenges
 router.get('/', requireAuth, async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('active_challenges')
@@ -16,14 +16,26 @@ router.get('/', requireAuth, async (req, res) => {
   res.json(data ?? []);
 });
 
-// POST /api/challenges — create a new challenge
+// POST /api/challenges — frontend_id ni ham qabul qiladi
 router.post('/', requireAuth, async (req, res) => {
-  const { title, category = 'ibadah', base_xp = 20, icon = '✨' } = req.body;
+  const { title, category = 'ibadah', base_xp = 20, icon = '✨', frontend_id } = req.body;
   if (!title) return res.status(400).json({ error: 'title majburiy' });
+
+  // Agar frontend_id bilan challenge allaqachon mavjud bo'lsa — mavjudini qaytarish
+  if (frontend_id) {
+    const { data: existing } = await supabaseAdmin
+      .from('active_challenges')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .eq('frontend_id', frontend_id)
+      .maybeSingle();
+
+    if (existing) return res.status(200).json(existing);
+  }
 
   const { data, error } = await supabaseAdmin
     .from('active_challenges')
-    .insert({ user_id: req.user.id, title, category, base_xp, icon })
+    .insert({ user_id: req.user.id, title, category, base_xp, icon, frontend_id: frontend_id || null })
     .select()
     .single();
 
@@ -31,7 +43,7 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json(data);
 });
 
-// DELETE /api/challenges/:id
+// DELETE /api/challenges/:id — UUID bilan o'chirish
 router.delete('/:id', requireAuth, async (req, res) => {
   const { error } = await supabaseAdmin
     .from('active_challenges')
@@ -43,7 +55,19 @@ router.delete('/:id', requireAuth, async (req, res) => {
   res.json({ message: "O'chirildi" });
 });
 
-// POST /api/challenges/complete — mark challenges done for today, earn XP
+// DELETE /api/challenges/fid/:frontend_id — frontend_id bilan o'chirish
+router.delete('/fid/:frontend_id', requireAuth, async (req, res) => {
+  const { error } = await supabaseAdmin
+    .from('active_challenges')
+    .delete()
+    .eq('frontend_id', req.params.frontend_id)
+    .eq('user_id', req.user.id);
+
+  if (error) return res.status(500).json({ error: "Challengeni o'chirishda xato" });
+  res.json({ message: "O'chirildi" });
+});
+
+// POST /api/challenges/complete
 router.post('/complete', requireAuth, async (req, res) => {
   const { date, challenge_ids, total_xp } = req.body;
   if (!date || !Array.isArray(challenge_ids) || typeof total_xp !== 'number') {
@@ -52,7 +76,6 @@ router.post('/complete', requireAuth, async (req, res) => {
 
   const userId = req.user.id;
 
-  // Upsert completed_day record
   const { data: dayData, error: dayError } = await supabaseAdmin
     .from('completed_days')
     .upsert({ user_id: userId, date, challenge_ids, total_xp }, { onConflict: 'user_id,date' })
@@ -61,19 +84,10 @@ router.post('/complete', requireAuth, async (req, res) => {
 
   if (dayError) return res.status(500).json({ error: "Kunni saqlashda xato" });
 
-  // Update profile XP and streak
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('xp, streak, last_task_at')
-    .eq('id', userId)
-    .single();
-
-  const newXP = (profile?.xp ?? 0) + total_xp;
-  const newStreak = computeNewStreak(profile?.streak ?? 0, profile?.last_task_at, date);
-
+  // XP ni to'liq yangilash (client hisoblagan qiymat)
   const { data: updatedProfile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .update({ xp: newXP, streak: newStreak, last_task_at: new Date(date).toISOString() })
+    .update({ xp: total_xp, streak: req.body.streak ?? undefined, last_task_at: new Date(date).toISOString() })
     .eq('id', userId)
     .select()
     .single();
@@ -83,50 +97,25 @@ router.post('/complete', requireAuth, async (req, res) => {
   res.json({ day: dayData, profile: updatedProfile });
 });
 
-// POST /api/challenges/undo — undo today's completion
+// POST /api/challenges/undo
 router.post('/undo', requireAuth, async (req, res) => {
-  const { date, xp_to_remove } = req.body;
-  if (!date || typeof xp_to_remove !== 'number') {
-    return res.status(400).json({ error: 'date, xp_to_remove majburiy' });
+  const { date, xp_after_undo } = req.body;
+  if (!date || typeof xp_after_undo !== 'number') {
+    return res.status(400).json({ error: 'date, xp_after_undo majburiy' });
   }
 
   const userId = req.user.id;
 
-  // Delete the day record
-  await supabaseAdmin
-    .from('completed_days')
-    .delete()
-    .eq('user_id', userId)
-    .eq('date', date);
-
-  // Subtract XP from profile
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('xp')
-    .eq('id', userId)
-    .single();
-
-  const newXP = Math.max(0, (profile?.xp ?? 0) - xp_to_remove);
+  await supabaseAdmin.from('completed_days').delete().eq('user_id', userId).eq('date', date);
 
   const { data: updatedProfile } = await supabaseAdmin
     .from('profiles')
-    .update({ xp: newXP })
+    .update({ xp: xp_after_undo })
     .eq('id', userId)
     .select()
     .single();
 
   res.json({ profile: updatedProfile });
 });
-
-// --- Helper ---
-function computeNewStreak(currentStreak, lastTaskAt, todayDate) {
-  if (!lastTaskAt) return 1;
-  const last = new Date(lastTaskAt);
-  const today = new Date(todayDate);
-  const diffDays = Math.round((today - last) / 86400000);
-  if (diffDays === 1) return currentStreak + 1;  // consecutive
-  if (diffDays === 0) return currentStreak;       // same day
-  return 1;                                       // streak broken
-}
 
 export default router;

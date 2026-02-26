@@ -4,11 +4,13 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import 'dotenv/config';
 
-import authRouter      from './routes/auth.js';
-import profileRouter   from './routes/profile.js';
-import challengesRouter from './routes/challenges.js';
-import calendarRouter  from './routes/calendar.js';
-import prayerRouter    from './routes/prayer.js';
+import authRouter         from './routes/auth.js';
+import profileRouter      from './routes/profile.js';
+import challengesRouter   from './routes/challenges.js';
+import calendarRouter     from './routes/calendar.js';
+import prayerRouter       from './routes/prayer.js';
+import dataRouter         from './routes/data.js';
+import achievementsRouter from './routes/achievements.js';
 
 const app = express();
 
@@ -35,11 +37,13 @@ app.use(express.json());
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
 // Routes
-app.use('/api/auth',       authLimiter, authRouter);
-app.use('/api/profile',    profileRouter);
-app.use('/api/challenges', challengesRouter);
-app.use('/api/calendar',   calendarRouter);
-app.use('/api/prayer',     prayerRouter);
+app.use('/api/auth',         authLimiter, authRouter);
+app.use('/api/profile',      profileRouter);
+app.use('/api/challenges',   challengesRouter);
+app.use('/api/calendar',     calendarRouter);
+app.use('/api/prayer',       prayerRouter);
+app.use('/api/data',         dataRouter);
+app.use('/api/achievements', achievementsRouter);
 
 // 404
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
