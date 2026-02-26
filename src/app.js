@@ -11,6 +11,7 @@ import calendarRouter     from './routes/calendar.js';
 import prayerRouter       from './routes/prayer.js';
 import dataRouter         from './routes/data.js';
 import achievementsRouter from './routes/achievements.js';
+import nafsRouter         from './routes/nafs.js';
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/api/calendar',     calendarRouter);
 app.use('/api/prayer',       prayerRouter);
 app.use('/api/data',         dataRouter);
 app.use('/api/achievements', achievementsRouter);
+app.use('/api/nafs',         nafsRouter);
 
 // 404
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
