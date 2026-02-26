@@ -12,6 +12,9 @@ import prayerRouter    from './routes/prayer.js';
 
 const app = express();
 
+// Trust Vercel/proxy headers (required for rate limiting + correct IPs)
+app.set('trust proxy', 1);
+
 // Security
 app.use(helmet());
 app.use(cors({
