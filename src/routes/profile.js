@@ -18,10 +18,12 @@ router.get('/', requireAuth, async (req, res) => {
 
 // PUT /api/profile
 router.put('/', requireAuth, async (req, res) => {
-  const { name, city } = req.body;
+  const { name, city, xp, streak } = req.body;
   const updates = {};
   if (name) updates.name = name;
   if (city) updates.city = city;
+  if (typeof xp === 'number' && xp >= 0) updates.xp = xp;
+  if (typeof streak === 'number' && streak >= 0) updates.streak = streak;
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "O'zgartiriladigan maydon yo'q" });
