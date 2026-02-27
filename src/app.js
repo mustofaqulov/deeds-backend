@@ -12,6 +12,7 @@ import prayerRouter       from './routes/prayer.js';
 import dataRouter         from './routes/data.js';
 import achievementsRouter from './routes/achievements.js';
 import nafsRouter         from './routes/nafs.js';
+import statsRouter        from './routes/stats.js';
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/prayer',       prayerRouter);
 app.use('/api/data',         dataRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/nafs',         nafsRouter);
+app.use('/api/stats',        statsRouter);
 
 // 404
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
