@@ -29,7 +29,10 @@ router.post('/assess', requireAuth, async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: 'Nafs darajasini saqlashda xato' });
-  res.json(data);
+  res.json({
+    nafs_stage: data?.nafs_stage ?? stage_id,
+    nafs_assessed_at: data?.nafs_assessed_at ?? new Date().toISOString(),
+  });
 });
 
 // GET /api/nafs — hozirgi nafs darajasini olish
@@ -41,7 +44,10 @@ router.get('/', requireAuth, async (req, res) => {
     .single();
 
   if (error) return res.status(404).json({ error: 'Profil topilmadi' });
-  res.json(data);
+  res.json({
+    nafs_stage: data?.nafs_stage ?? null,
+    nafs_assessed_at: data?.nafs_assessed_at ?? null,
+  });
 });
 
 export default router;
