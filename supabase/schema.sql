@@ -157,6 +157,32 @@ create table if not exists prayer_log (
 );
 
 -- ============================================================
+-- 6) Nafs ulama advice (global content for Nafs page)
+-- ============================================================
+
+create table if not exists nafs_ulama_advice (
+  id         text primary key,
+  scholar    text not null,
+  work       text not null,
+  advice     text not null,
+  action     text not null,
+  source     text not null default '#',
+  sort_order integer not null default 0,
+  is_active  boolean not null default true,
+  updated_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table if exists nafs_ulama_advice
+  add column if not exists source text not null default '#',
+  add column if not exists sort_order integer not null default 0,
+  add column if not exists is_active boolean not null default true,
+  add column if not exists updated_by uuid references auth.users(id) on delete set null,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+-- ============================================================
 -- Row Level Security
 -- ============================================================
 
@@ -165,6 +191,7 @@ alter table active_challenges enable row level security;
 alter table completed_days    enable row level security;
 alter table achievements      enable row level security;
 alter table prayer_log        enable row level security;
+alter table nafs_ulama_advice enable row level security;
 
 drop policy if exists "profiles: own row" on profiles;
 create policy "profiles: own row" on profiles
@@ -186,6 +213,11 @@ drop policy if exists "prayer_log: own rows" on prayer_log;
 create policy "prayer_log: own rows" on prayer_log
   for all using (auth.uid() = user_id);
 
+drop policy if exists "nafs_ulama_advice: authenticated read" on nafs_ulama_advice;
+create policy "nafs_ulama_advice: authenticated read" on nafs_ulama_advice
+  for select
+  using (auth.role() = 'authenticated');
+
 -- ============================================================
 -- Indexes
 -- ============================================================
@@ -196,3 +228,5 @@ create index if not exists idx_completed_days_user       on completed_days(user_
 create index if not exists idx_completed_days_user_date  on completed_days(user_id, date);
 create index if not exists idx_achievements_user         on achievements(user_id);
 create index if not exists idx_prayer_log_user_date      on prayer_log(user_id, date);
+create index if not exists idx_nafs_ulama_sort           on nafs_ulama_advice(sort_order, created_at);
+create index if not exists idx_nafs_ulama_active         on nafs_ulama_advice(is_active);
